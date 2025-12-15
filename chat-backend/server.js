@@ -26,11 +26,10 @@ const corsOptions = {
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 };
-
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cors({
-  origin: "https://mern-chat-frontend.vercel.app", // replace with your actual Vercel URL
+  origin: "https://mern-project-chat-applicaton.vercel.app/login", // replace with your actual Vercel URL
   credentials: true
 }));
 
