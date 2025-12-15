@@ -3,39 +3,73 @@ import { useState, useEffect } from "react";
 import MessageBubble from "./MessageBubble.jsx";
 import MessageInput from "./MessageInput.jsx";
 import TypingIndicator from "./TypingIndicator.jsx";
-import socket from "../socket";
+import { API_URL } from "../socket";
 
-function ChatWindow({ selectedChat, room, email }) {
+function ChatWindow({ currentUser, selectedChat, socket }) {
   const [messages, setMessages] = useState([]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
 
+  const token = localStorage.getItem("token");
+  const chatId = selectedChat?.chatId;
+  const otherUser = selectedChat?.otherUser;
 
+  // Load messages
   useEffect(() => {
-    if (!room || !email) return;
+    if (!chatId || !token) {
+      setMessages([]);
+      return;
+    }
 
-    fetch(`http://localhost:5000/api/messages/${room}`)
-      .then((res) => res.json())
-      .then((data) => {
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/messages/${chatId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          console.error("Error loading messages:", data);
+          return;
+        }
+
         const formatted = data.map((m) => ({
-          room: m.room,
+          _id: m._id,
+          chatId: m.chatId,
           text: m.text,
-          email: m.senderEmail,
-          time: new Date(m.createdAt).toLocaleTimeString(),
+          sender: m.senderId,
+          time: new Date(m.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
         }));
+
         setMessages(formatted);
-      })
-      .catch((err) => {
-        console.error("Error loading messages:", err);
-      });
-  }, [room, email]);
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+      }
+    };
 
+    fetchMessages();
+  }, [chatId, token]);
 
+  // Receive messages
   useEffect(() => {
-    if (!room || !email) return;
+    if (!chatId || !socket) return;
 
-    const handleReceive = (data) => {
-      if (data.room === room) {
-        setMessages((prev) => [...prev, data]);
+    const handleReceive = (msg) => {
+      if (msg.chatId === chatId) {
+        const formatted = {
+          _id: msg._id,
+          chatId: msg.chatId,
+          text: msg.text,
+          sender: msg.senderId,
+          time: new Date(msg.createdAt || Date.now()).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+        setMessages((prev) => [...prev, formatted]);
       }
     };
 
@@ -44,68 +78,122 @@ function ChatWindow({ selectedChat, room, email }) {
     return () => {
       socket.off("receive_message", handleReceive);
     };
-  }, [room, email]);
+  }, [chatId, socket]);
 
-  const handleSend = (text) => {
-    if (!text.trim()) return;
+  // Typing events
+  useEffect(() => {
+    if (!chatId || !socket) return;
 
-    const msg = {
-      room,
-      text,
-      email,
-      time: new Date().toLocaleTimeString(),
+    const handleTyping = (data) => {
+      if (data.chatId === chatId && data.senderId !== currentUser._id) {
+        setIsOtherTyping(true);
+      }
     };
 
-    setMessages((prev) => [...prev, msg]);
+    const handleStopTyping = (data) => {
+      if (data.chatId === chatId && data.senderId !== currentUser._id) {
+        setIsOtherTyping(false);
+      }
+    };
 
+    socket.on("typing", handleTyping);
+    socket.on("stop_typing", handleStopTyping);
 
-    socket.emit("send_message", msg);
+    return () => {
+      socket.off("typing", handleTyping);
+      socket.off("stop_typing", handleStopTyping);
+    };
+  }, [chatId, socket, currentUser._id]);
 
-    setIsTyping(false);
+  const handleTypingChange = (isTyping) => {
+    if (!chatId || !socket) return;
+
+    if (isTyping) {
+      socket.emit("typing", { chatId });
+    } else {
+      socket.emit("stop_typing", { chatId });
+    }
   };
 
-  if (!selectedChat) {
+  const handleSend = (text) => {
+    if (!text.trim() || !chatId || !socket) return;
+
+    socket.emit("send_message", {
+      chatId,
+      text,
+    });
+
+    const tempMsg = {
+      _id: `temp-${Date.now()}`,
+      chatId,
+      text,
+      sender: {
+        _id: currentUser._id,
+        name: currentUser.name,
+        email: currentUser.email,
+      },
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+    setMessages((prev) => [...prev, tempMsg]);
+
+    handleTypingChange(false);
+  };
+
+  if (!selectedChat || !otherUser) {
     return (
-      <div className="h-100 d-flex align-items-center justify-content-center text-muted">
+      <div className="chat-window d-flex align-items-center justify-content-center text-muted">
         Select a chat from the left to start messaging.
       </div>
     );
   }
 
+  if (!socket) {
+    return (
+      <div className="chat-window d-flex align-items-center justify-content-center text-muted">
+        Connecting to chat server...
+      </div>
+    );
+  }
+
   return (
-    <div
-      className="d-flex flex-column bg-light"
-      style={{ height: "calc(100vh - 56px)" }}
-    >
+    <div className="chat-window">
       {/* Header */}
-      <div className="d-flex align-items-center border-bottom bg-white px-3 py-2">
-        <div
-          className="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-2"
-          style={{ width: "36px", height: "36px" }}
-        >
-          {selectedChat.name.charAt(0)}
+      <div className="chat-header">
+        <div className="chat-header-avatar">
+          {otherUser.name.charAt(0).toUpperCase()}
         </div>
-        <div>
-          <div className="small fw-semibold">{selectedChat.name}</div>
-          <div className="small text-success">online</div>
+        <div className="chat-header-text">
+          <div className="chat-header-name">{otherUser.name}</div>
+          <div className="chat-header-email">
+            {otherUser.email} • {isOtherTyping ? "typing..." : "online"}
+          </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-grow-1 overflow-auto px-3 py-2">
-        {messages.map((m, idx) => (
+      <div className="chat-body">
+        {messages.map((m) => (
           <MessageBubble
-            key={idx}
-            text={`${m.text} (${m.email})`}
-            fromMe={m.email === email}
+            key={m._id}
+            text={m.text}
+            time={m.time}
+            fromMe={m.sender && m.sender._id === currentUser._id}
           />
         ))}
-        {isTyping && <TypingIndicator name="Someone" />}
+
+        {isOtherTyping && (
+          <div className="typing-indicator">
+            {otherUser.name} is typing...
+          </div>
+        )}
       </div>
 
       {/* Input */}
-      <div className="border-top bg-white px-3 py-2">
-        <MessageInput onSend={handleSend} onTypingChange={setIsTyping} />
+      <div className="chat-input-bar">
+        <MessageInput onSend={handleSend} onTyping={handleTypingChange} />
       </div>
     </div>
   );

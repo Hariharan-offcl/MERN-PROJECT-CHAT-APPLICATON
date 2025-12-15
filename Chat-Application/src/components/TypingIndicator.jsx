@@ -1,6 +1,7 @@
+// src/components/TypingIndicator.jsx
 function TypingIndicator({ name }) {
   return (
-    <div className="small text-muted mt-1">
+    <div className="text-muted small fst-italic mb-2">
       {name} is typing...
     </div>
   );

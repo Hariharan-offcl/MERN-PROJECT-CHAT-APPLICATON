@@ -1,17 +1,10 @@
-function MessageBubble({ text, fromMe }) {
+// src/components/MessageBubble.jsx
+function MessageBubble({ text, fromMe, time }) {
   return (
-    <div
-      className={`d-flex mb-1 ${
-        fromMe ? "justify-content-end" : "justify-content-start"
-      }`}
-    >
-      <div
-        className={`px-3 py-2 rounded-3 small shadow-sm ${
-          fromMe ? "bg-success text-white" : "bg-white"
-        }`}
-        style={{ maxWidth: "70%" }}
-      >
-        {text}
+    <div className={`message-row ${fromMe ? "me" : "other"}`}>
+      <div className={`message-bubble ${fromMe ? "me" : "other"}`}>
+        <span>{text}</span>
+        {time && <span className="message-time">{time}</span>}
       </div>
     </div>
   );

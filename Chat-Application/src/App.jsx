@@ -1,22 +1,32 @@
-import { Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar.jsx";
-import HomePage from "./pages/HomePage.jsx";
+// src/App.jsx
+import { Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "./pages/LoginPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
-import ProfilePage from "./pages/ProfilePage.jsx";
-import NotFound from "./pages/NotFound.jsx";
+import "./App.css";
+
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
 
 function App() {
   return (
-    <div className="d-flex flex-column min-vh-100 bg-light">
-      <Navbar />
-      <div className="flex-grow-1">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </div>
+    <div className="app-container">
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
     </div>
   );
 }

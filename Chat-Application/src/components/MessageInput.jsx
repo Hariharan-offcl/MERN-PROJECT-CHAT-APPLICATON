@@ -1,39 +1,48 @@
+// src/components/MessageInput.jsx
 import { useState } from "react";
 
-function MessageInput({ onSend, onTypingChange }) {
+function MessageInput({ onSend, onTyping }) {
   const [value, setValue] = useState("");
 
-  const handleSendClick = () => {
-    if (!value.trim()) return;
-    onSend(value);
-    setValue("");
-    onTypingChange && onTypingChange(false);
-  };
-
   const handleChange = (e) => {
-    const newValue = e.target.value;
-    setValue(newValue);
-    onTypingChange && onTypingChange(newValue.length > 0);
-  };
+    const v = e.target.value;
+    setValue(v);
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendClick();
+    if (onTyping) {
+      // user is typing if there is non-empty text
+      onTyping(v.trim().length > 0);
     }
   };
 
+  const handleKeyDown = (e) => {
+    // Enter to send (Shift+Enter for new line)
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleSend = () => {
+    const text = value.trim();
+    if (!text) return;
+
+    onSend(text);
+    setValue("");
+    if (onTyping) onTyping(false); // stop typing when message sent
+  };
+
   return (
-    <div className="d-flex gap-2">
+    <div className="d-flex">
       <textarea
-        className="form-control form-control-sm"
+        className="form-control form-control-sm me-2"
         rows={1}
+        style={{ resize: "none" }}
         placeholder="Type a message"
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
       />
-      <button className="btn btn-success btn-sm" onClick={handleSendClick}>
+      <button className="btn btn-success btn-sm" onClick={handleSend}>
         Send
       </button>
     </div>
