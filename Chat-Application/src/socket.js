@@ -1,7 +1,9 @@
 // src/socket.js
 import { io } from "socket.io-client";
 
-export const API_URL = "http://localhost:5000";
+// Use environment variable instead of localhost
+export const API_URL =
+  process.env.REACT_APP_SOCKET_URL || "http://localhost:5000";
 
 let socket = null;
 
@@ -11,6 +13,8 @@ export const initSocket = (token) => {
 
   socket = io(API_URL, {
     auth: { token }, // send JWT token to backend
+    transports: ["websocket"], // ensure stable connection
+    withCredentials: true      // allow cookies/auth headers if needed
   });
 
   socket.on("connect", () => {
@@ -18,7 +22,7 @@ export const initSocket = (token) => {
   });
 
   socket.on("connect_error", (err) => {
-    console.error(" Socket connect error:", err.message);
+    console.error("Socket connect error:", err.message);
   });
 
   return socket;

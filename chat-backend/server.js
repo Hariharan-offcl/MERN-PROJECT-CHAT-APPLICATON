@@ -26,8 +26,14 @@ const corsOptions = {
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 };
+
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cors({
+  origin: "https://mern-chat-frontend.vercel.app", // replace with your actual Vercel URL
+  credentials: true
+}));
+
 
 // Helper: generate JWT
 const generateToken = (id) => {
@@ -105,6 +111,8 @@ app.post("/api/auth/register", async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 });
+app.get("/healthz", (req, res) => res.send("OK"));
+
 // -------------------- CONTACTS ROUTE (Stage 1) --------------------
 
 // Get "my contacts" = people I have chats with
