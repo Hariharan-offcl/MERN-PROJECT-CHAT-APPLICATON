@@ -153,7 +153,7 @@ function ChatPage() {
         </span>
         <div className="ms-auto d-flex align-items-center gap-3">
           <span className="small">
-            {currentUser.name} ({currentUser.email})
+            {currentUser.name} 
           </span>
           <button
             className="btn btn-sm btn-outline-light"
